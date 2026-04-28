@@ -77,12 +77,11 @@ class PayoutRequestView(views.APIView):
                         # Request #1 already finished, return exact same response
                         return Response(idem_record.response_body, status=idem_record.response_status)
                     else:
-                        # Request #1 is STILL IN FLIGHT. The select_for_update() actually makes Request #2 block
-                        # until Request #1's transaction finishes. However, if they were truly concurrent, 
-                        # one would get create=True and lock, the other would block on get_or_create then see create=False.
-                        # Wait, if get_or_create blocks and then resumes, response_body might be there now!
-                        # BUT wait, the response saving happens *outside* this atomic block (at the end of the view).
-                        # So if we are here and response_body is None, it means the request is currently in-progress.
+                        # Request #1 may still be in-flight, or it just finished but hasn't saved yet.
+                        # Re-fetch after the lock releases to close the race window.
+                        idem_record.refresh_from_db()
+                        if idem_record.response_body is not None:
+                            return Response(idem_record.response_body, status=idem_record.response_status)
                         return Response({"error": "Request already in progress"}, status=status.HTTP_409_CONFLICT)
                 
                 # If we get here, `created` is True, meaning we're the first one to acquire it.
