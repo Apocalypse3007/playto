@@ -28,9 +28,15 @@ class MerchantDashboardSerializer(serializers.ModelSerializer):
         return obj.balance_paise
 
     def get_held_balance(self, obj):
-        # With the new 'Invoice'/'Payment Request' semantics, requesting a payout
-        # does not hold funds.
-        return 0
+        # Calculate held balance by summing PAYOUT_HOLD transactions.
+        from django.db.models import Sum
+        from core.models import Transaction
+        
+        held = Transaction.objects.filter(
+            merchant=obj, 
+            txn_type=Transaction.Type.PAYOUT_HOLD
+        ).aggregate(total=Sum('amount_paise'))['total'] or 0
+        return held
 
     def get_recent_transactions(self, obj):
         txns = Transaction.objects.filter(merchant=obj).order_by('-created_at')[:10]

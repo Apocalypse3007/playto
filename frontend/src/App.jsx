@@ -1,26 +1,19 @@
 import React, { useState, useEffect } from 'react';
-import { Wallet, ArrowUpRight, Activity, Clock, CheckCircle, XCircle } from 'lucide-react';
+import { Wallet, Activity, Clock, CheckCircle2, XCircle, ArrowRight, CornerDownRight, Check, Loader2 } from 'lucide-react';
+import { Routes, Route, useNavigate, useParams } from 'react-router-dom';
 
 const API_BASE = 'http://localhost:8000/api/v1';
-// In a real app, merchant_id would come from auth. Using Globex Inc from seed.
-const MERCHANT_ID = '00000000-0000-0000-0000-000000000000'; // We need the actual UUID, but since seeding is dynamic, let's make it selectable or fetch the first one.
 
-function App() {
-  const [merchants, setMerchants] = useState([]);
-  const [activeMerchant, setActiveMerchant] = useState(null);
+function Dashboard() {
+  const { merchantId: activeMerchant } = useParams();
+  const navigate = useNavigate();
   const [dashboardData, setDashboardData] = useState(null);
   const [amount, setAmount] = useState('');
   const [bankAccount, setBankAccount] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState(null);
 
-  // We need to fetch a merchant ID first to display it, since our seed dynamically generated them.
-  // For simplicity, we'll fetch all merchants and pick the first one? Wait, we don't have a GET /merchants route.
-  // Let's assume the user supplies the merchant ID or it's hardcoded to the first UUID in db.
-  // Actually, I didn't write an endpoint for all merchants. Let's add that to backend or just simulate it.
-
   useEffect(() => {
-    // Polling dashboard
     if (!activeMerchant) return;
     
     const fetchDashboard = async () => {
@@ -86,146 +79,156 @@ function App() {
     }
   };
 
-  const getStatusIcon = (state) => {
+  const getStatusBadge = (state) => {
     switch (state) {
-      case 'COMPLETED': return <CheckCircle className="w-5 h-5 text-emerald-400" />;
-      case 'FAILED': return <XCircle className="w-5 h-5 text-rose-400" />;
-      case 'PROCESSING': return <Activity className="w-5 h-5 text-sky-400 animate-pulse" />;
-      default: return <Clock className="w-5 h-5 text-yellow-400" />;
+      case 'COMPLETED': 
+        return (
+          <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-medium bg-emerald-500/10 text-emerald-500 border border-emerald-500/20">
+            <CheckCircle2 className="w-3 h-3" /> Completed
+          </span>
+        );
+      case 'FAILED': 
+        return (
+          <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-medium bg-red-500/10 text-red-500 border border-red-500/20">
+            <XCircle className="w-3 h-3" /> Failed
+          </span>
+        );
+      case 'PROCESSING': 
+        return (
+          <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-medium bg-amber-500/10 text-amber-500 border border-amber-500/20">
+            <Loader2 className="w-3 h-3 animate-spin" /> Processing
+          </span>
+        );
+      default: 
+        return (
+          <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-medium bg-neutral-500/10 text-neutral-400 border border-neutral-500/20">
+            <Clock className="w-3 h-3" /> {state}
+          </span>
+        );
     }
   };
-
-  // We add a mock way to set active merchant for the test if it's missing.
-  if (!activeMerchant) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-slate-900 via-[#0a0f1c] to-black text-white relative overflow-hidden">
-        <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-purple-500/20 rounded-full blur-[120px]"></div>
-        <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-blue-500/20 rounded-full blur-[120px]"></div>
-        
-        <div className="z-10 bg-white/5 backdrop-blur-xl border border-white/10 p-8 rounded-2xl w-full max-w-md shadow-2xl">
-          <h2 className="text-2xl font-semibold mb-6 flex items-center gap-3">
-             Select Merchant Simulation
-          </h2>
-          <p className="text-gray-400 text-sm mb-6">Enter a valid UUID from your Seed script to continue.</p>
-          <input 
-            type="text" 
-            placeholder="Merchant UUID..." 
-            className="w-full bg-black/50 border border-white/10 rounded-xl px-4 py-3 mb-4 focus:ring-2 focus:ring-blue-500 outline-none transition-all placeholder:text-gray-600"
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') setActiveMerchant(e.target.value);
-            }}
-          />
-        </div>
-      </div>
-    );
-  }
 
   if (!dashboardData) return null;
 
   return (
-    <div className="min-h-screen bg-[radial-gradient(ellipse_at_top_left,_var(--tw-gradient-stops))] from-gray-900 via-[#050b14] to-black text-white font-sans p-6 md:p-12 relative overflow-hidden">
-      
-      {/* Background decorations */}
-      <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-indigo-600/10 rounded-full blur-[120px] pointer-events-none"></div>
-      <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-blue-600/10 rounded-full blur-[120px] pointer-events-none"></div>
-
-      <div className="max-w-6xl mx-auto relative z-10 space-y-8">
-        
-        {/* Header */}
-        <header className="flex justify-between items-end pb-6 border-b border-white/10">
-          <div>
-            <h1 className="text-4xl md:text-5xl font-bold bg-gradient-to-r from-blue-400 via-indigo-300 to-purple-400 bg-clip-text text-transparent mb-2 tracking-tight">
-              Playto Engine
-            </h1>
-            <p className="text-gray-400 font-medium">Merchant: {dashboardData.name}</p>
+    <div className="min-h-screen bg-black text-neutral-200 font-sans selection:bg-neutral-800 selection:text-white">
+      {/* Header Navigation */}
+      <header className="sticky top-0 z-50 bg-black/80 backdrop-blur-md border-b border-neutral-800">
+        <div className="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
+          <div className="flex items-center gap-6">
+            <div className="flex items-center gap-2">
+              <span className="text-white font-semibold tracking-tight">Playto</span>
+            </div>
+            <div className="h-4 w-px bg-neutral-800"></div>
+            <div className="flex items-center gap-2 text-sm text-neutral-400">
+              <span className="hover:text-white transition-colors cursor-pointer">{dashboardData.name}</span>
+              <span className="bg-neutral-900 border border-neutral-800 text-neutral-300 text-[10px] font-mono px-1.5 py-0.5 rounded">Pro</span>
+            </div>
           </div>
+          
           <div className="flex items-center gap-4">
             <button 
-              onClick={() => {
-                setActiveMerchant(null);
-                setDashboardData(null);
-              }}
-              className="text-sm text-gray-400 hover:text-white bg-white/5 hover:bg-white/10 px-4 py-2 rounded-full border border-white/5 transition-all"
+              onClick={() => navigate('/')}
+              className="text-sm text-neutral-400 hover:text-white transition-colors"
             >
               Change Merchant
             </button>
-            <div className="hidden md:flex items-center gap-2 bg-white/5 px-4 py-2 rounded-full border border-white/5">
-              <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></div>
-              <span className="text-sm font-medium text-emerald-400">Live API</span>
+            <div className="flex items-center gap-2 text-sm text-neutral-400 border border-neutral-800 rounded-full px-3 py-1">
+              <div className="w-2 h-2 rounded-full bg-emerald-500 relative">
+                <div className="absolute inset-0 rounded-full bg-emerald-500 animate-ping opacity-75"></div>
+              </div>
+              Live
             </div>
           </div>
-        </header>
+        </div>
+      </header>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <main className="max-w-6xl mx-auto px-6 py-12 space-y-12">
+        {/* Page Title */}
+        <div>
+          <h1 className="text-3xl font-semibold text-white tracking-tight mb-2">Dashboard</h1>
+          <p className="text-neutral-400 text-sm">Manage your payouts and monitor recent transactions.</p>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           
-          {/* Main Balances */}
-          <div className="md:col-span-2 space-y-6">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-              {/* Available Balance Card */}
-              <div className="bg-gradient-to-br from-white/10 to-white/5 backdrop-blur-md rounded-3xl p-8 border border-white/10 shadow-xl group hover:border-white/20 transition-all duration-300">
-                <div className="flex items-center gap-3 text-gray-400 mb-4">
-                  <Wallet className="w-5 h-5 text-emerald-400" />
-                  <span className="font-semibold uppercase tracking-wider text-xs">Available Balance</span>
+          {/* Main Content Area */}
+          <div className="lg:col-span-2 space-y-8">
+            
+            {/* Balances */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="bg-[#0a0a0a] border border-neutral-800 rounded-xl p-6 hover:border-neutral-700 transition-colors">
+                <div className="flex justify-between items-start mb-6">
+                  <h3 className="text-sm font-medium text-neutral-400">Available Balance</h3>
+                  <Wallet className="w-4 h-4 text-neutral-500" />
                 </div>
-                <div className="text-5xl font-bold text-white tracking-tight group-hover:scale-[1.02] transition-transform origin-left">
-                  ₹{(dashboardData.available_balance / 100).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                <div className="flex items-baseline gap-1">
+                  <span className="text-neutral-500">₹</span>
+                  <span className="text-3xl font-semibold text-white tracking-tight">
+                    {(dashboardData.available_balance / 100).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                  </span>
                 </div>
               </div>
 
-              {/* Held Balance Card */}
-              <div className="bg-white/5 backdrop-blur-md rounded-3xl p-8 border border-white/10 shadow-lg">
-                <div className="flex items-center gap-3 text-gray-400 mb-4">
-                  <Clock className="w-5 h-5 text-yellow-500" />
-                  <span className="font-semibold uppercase tracking-wider text-xs">Held / Processing</span>
+              <div className="bg-[#0a0a0a] border border-neutral-800 rounded-xl p-6 hover:border-neutral-700 transition-colors">
+                <div className="flex justify-between items-start mb-6">
+                  <h3 className="text-sm font-medium text-neutral-400">Held for Processing</h3>
+                  <Clock className="w-4 h-4 text-neutral-500" />
                 </div>
-                <div className="text-4xl font-semibold text-gray-300">
-                  ₹{Math.abs(dashboardData.held_balance / 100).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                <div className="flex items-baseline gap-1">
+                  <span className="text-neutral-500">₹</span>
+                  <span className="text-3xl font-semibold text-white tracking-tight">
+                    {Math.abs(dashboardData.held_balance / 100).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                  </span>
                 </div>
               </div>
             </div>
 
-            {/* Payout History Table */}
-            <div className="bg-white/5 backdrop-blur-md rounded-3xl border border-white/10 flex flex-col overflow-hidden shadow-2xl">
-              <div className="p-6 border-b border-white/10 bg-white/[0.02]">
-                <h3 className="text-xl font-semibold">Recent Payouts</h3>
+            {/* Payouts Table */}
+            <div className="bg-black border border-neutral-800 rounded-xl overflow-hidden">
+              <div className="px-6 py-4 border-b border-neutral-800 flex justify-between items-center">
+                <h3 className="font-medium text-white">Recent Payouts</h3>
               </div>
               <div className="overflow-x-auto">
-                <table className="w-full text-left border-collapse">
-                  <thead>
-                    <tr className="text-gray-400 text-sm border-b border-white/5">
-                      <th className="px-6 py-4 font-medium">Counterparty</th>
-                      <th className="px-6 py-4 font-medium text-right">Amount</th>
-                      <th className="px-6 py-4 font-medium text-center">Status</th>
-                      <th className="px-6 py-4 font-medium text-right">Time</th>
+                <table className="w-full text-sm text-left">
+                  <thead className="text-xs text-neutral-400 bg-[#0a0a0a] border-b border-neutral-800">
+                    <tr>
+                      <th className="px-6 py-3 font-medium">Destination</th>
+                      <th className="px-6 py-3 font-medium text-right">Amount</th>
+                      <th className="px-6 py-3 font-medium">Status</th>
+                      <th className="px-6 py-3 font-medium text-right">Created</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-white/5">
+                  <tbody className="divide-y divide-neutral-800">
                     {dashboardData.payouts && dashboardData.payouts.map(p => (
-                      <tr key={p.id} className="hover:bg-white/5 transition-colors group">
-                        <td className="px-6 py-4 text-gray-300 font-mono text-sm">{p.bank_account_id === activeMerchant ? p.merchant : p.bank_account_id}</td>
-                        <td className="px-6 py-4 text-right font-semibold">₹{(p.amount_paise / 100).toLocaleString('en-IN')}</td>
-                        <td className="px-6 py-4 flex justify-center">
-                          <div className="flex items-center gap-2">
-                            {getStatusIcon(p.state)}
-                            <span className="text-xs font-semibold tracking-wider text-gray-400">{p.state}</span>
+                      <tr key={p.id} className="hover:bg-neutral-900/50 transition-colors group">
+                        <td className="px-6 py-4 whitespace-nowrap text-neutral-300 font-mono text-xs">
+                          {p.bank_account_id === activeMerchant ? p.merchant : p.bank_account_id}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-right text-white font-medium">
+                          ₹{(p.amount_paise / 100).toLocaleString('en-IN')}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="flex items-center gap-3">
+                            {getStatusBadge(p.state)}
                             {(p.state === 'PENDING' || p.state === 'PROCESSING') && p.bank_account_id === activeMerchant && (
                               <button 
                                 onClick={() => handleSettle(p.id)}
-                                className="ml-2 text-[10px] bg-blue-500/20 hover:bg-blue-500/40 text-blue-300 px-2 py-1 rounded transition-colors"
+                                className="opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1 text-[10px] bg-neutral-800 hover:bg-neutral-700 text-white px-2 py-1 rounded"
                               >
-                                SETTLE
+                                Settle <ArrowRight className="w-3 h-3" />
                               </button>
                             )}
                           </div>
                         </td>
-                        <td className="px-6 py-4 text-right text-gray-500 text-sm">
-                          {new Date(p.created_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
+                        <td className="px-6 py-4 whitespace-nowrap text-right text-neutral-500">
+                          {new Date(p.created_at).toLocaleDateString(undefined, {month: 'short', day: 'numeric', hour: '2-digit', minute:'2-digit'})}
                         </td>
                       </tr>
                     ))}
                     {(!dashboardData.payouts || dashboardData.payouts.length === 0) && (
                       <tr>
-                        <td colSpan="4" className="text-center py-12 text-gray-500">No payouts yet.</td>
+                        <td colSpan="4" className="text-center py-8 text-neutral-500">No payouts yet.</td>
                       </tr>
                     )}
                   </tbody>
@@ -233,42 +236,39 @@ function App() {
               </div>
             </div>
 
-            {/* Recent Transactions Table */}
-            <div className="bg-white/5 backdrop-blur-md rounded-3xl border border-white/10 flex flex-col overflow-hidden shadow-2xl">
-              <div className="p-6 border-b border-white/10 bg-white/[0.02]">
-                <h3 className="text-xl font-semibold">Ledger Transactions</h3>
+            {/* Ledger Transactions */}
+            <div className="bg-black border border-neutral-800 rounded-xl overflow-hidden">
+              <div className="px-6 py-4 border-b border-neutral-800">
+                <h3 className="font-medium text-white">Ledger Activity</h3>
               </div>
               <div className="overflow-x-auto">
-                <table className="w-full text-left border-collapse">
-                  <thead>
-                    <tr className="text-gray-400 text-sm border-b border-white/5">
-                      <th className="px-6 py-4 font-medium">Type</th>
-                      <th className="px-6 py-4 font-medium text-right">Amount</th>
-                      <th className="px-6 py-4 font-medium text-right">Time</th>
+                <table className="w-full text-sm text-left">
+                  <thead className="text-xs text-neutral-400 bg-[#0a0a0a] border-b border-neutral-800">
+                    <tr>
+                      <th className="px-6 py-3 font-medium">Type</th>
+                      <th className="px-6 py-3 font-medium text-right">Amount</th>
+                      <th className="px-6 py-3 font-medium text-right">Date</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-white/5">
+                  <tbody className="divide-y divide-neutral-800">
                     {dashboardData.recent_transactions && dashboardData.recent_transactions.map(t => (
-                      <tr key={t.id} className="hover:bg-white/5 transition-colors group">
-                        <td className="px-6 py-4 font-semibold text-sm">
-                          <span className={
-                            t.txn_type === 'CREDIT' ? 'text-emerald-400' : 
-                            t.txn_type === 'PAYOUT_HOLD' ? 'text-yellow-400' : 'text-sky-400'
-                          }>
-                            {t.txn_type.replace('_', ' ')}
+                      <tr key={t.id} className="hover:bg-neutral-900/50 transition-colors">
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <span className="text-xs font-mono text-neutral-300">
+                            {t.txn_type}
                           </span>
                         </td>
-                        <td className={`px-6 py-4 text-right font-semibold ${t.amount_paise > 0 ? 'text-emerald-400' : 'text-gray-300'}`}>
+                        <td className={`px-6 py-4 whitespace-nowrap text-right font-medium ${t.amount_paise > 0 ? 'text-emerald-500' : 'text-neutral-300'}`}>
                           {t.amount_paise > 0 ? '+' : ''}₹{(t.amount_paise / 100).toLocaleString('en-IN')}
                         </td>
-                        <td className="px-6 py-4 text-right text-gray-500 text-sm">
-                          {new Date(t.created_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
+                        <td className="px-6 py-4 whitespace-nowrap text-right text-neutral-500">
+                          {new Date(t.created_at).toLocaleDateString(undefined, {month: 'short', day: 'numeric', hour: '2-digit', minute:'2-digit'})}
                         </td>
                       </tr>
                     ))}
                     {(!dashboardData.recent_transactions || dashboardData.recent_transactions.length === 0) && (
                       <tr>
-                        <td colSpan="3" className="text-center py-12 text-gray-500">No ledger activity yet.</td>
+                        <td colSpan="3" className="text-center py-8 text-neutral-500">No ledger activity yet.</td>
                       </tr>
                     )}
                   </tbody>
@@ -277,23 +277,24 @@ function App() {
             </div>
           </div>
 
-          {/* Sidebar / Actions */}
+          {/* Sidebar */}
           <div className="space-y-6">
-            <div className="bg-gradient-to-b from-blue-900/40 to-black/40 backdrop-blur-xl rounded-3xl p-6 border border-blue-500/20 shadow-[0_0_40px_-15px_rgba(59,130,246,0.3)] relative overflow-hidden">
-              <div className="absolute top-0 right-0 p-3 opacity-20 pointer-events-none">
-                <ArrowUpRight className="w-24 h-24 text-blue-400" />
-              </div>
-              <h3 className="text-xl font-semibold mb-6 relative z-10 text-blue-100">Request Payout</h3>
+            <div className="bg-[#0a0a0a] border border-neutral-800 rounded-xl p-6 sticky top-24">
+              <h3 className="font-medium text-white mb-6 flex items-center gap-2">
+                <CornerDownRight className="w-4 h-4 text-neutral-500" />
+                Initiate Payout
+              </h3>
               
               {error && (
-                <div className="mb-4 text-sm bg-rose-500/20 text-rose-300 border border-rose-500/30 p-3 rounded-lg">
-                  {error}
+                <div className="mb-6 text-sm bg-red-500/10 text-red-500 border border-red-500/20 p-3 rounded-md flex items-start gap-2">
+                  <XCircle className="w-4 h-4 mt-0.5 shrink-0" />
+                  <span>{error}</span>
                 </div>
               )}
 
-              <form onSubmit={handlePayout} className="space-y-5 relative z-10">
+              <form onSubmit={handlePayout} className="space-y-4">
                 <div>
-                  <label className="block text-sm text-blue-200/70 mb-2">Amount (₹)</label>
+                  <label className="block text-xs font-medium text-neutral-400 mb-1.5">Amount (₹)</label>
                   <input 
                     type="number" 
                     required 
@@ -301,39 +302,160 @@ function App() {
                     step="0.01"
                     value={amount}
                     onChange={(e) => setAmount(e.target.value)}
-                    className="w-full bg-black/40 border border-blue-500/30 rounded-xl px-4 py-3 focus:ring-2 focus:ring-blue-400 focus:border-transparent outline-none transition-all placeholder:text-blue-900/50"
-                    placeholder="500.00"
+                    className="w-full bg-black border border-neutral-800 rounded-md px-3 py-2 text-sm text-white placeholder-neutral-600 focus:outline-none focus:ring-1 focus:ring-white focus:border-white transition-all"
+                    placeholder="0.00"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm text-blue-200/70 mb-2">Bank Account</label>
+                  <label className="block text-xs font-medium text-neutral-400 mb-1.5">Destination Bank Account</label>
                   <input 
                     type="text" 
                     required 
                     value={bankAccount}
                     onChange={(e) => setBankAccount(e.target.value)}
-                    className="w-full bg-black/40 border border-blue-500/30 rounded-xl px-4 py-3 focus:ring-2 focus:ring-blue-400 focus:border-transparent outline-none transition-all placeholder:text-blue-900/50"
-                    placeholder="HDFC_0101XXXXX"
+                    className="w-full bg-black border border-neutral-800 rounded-md px-3 py-2 text-sm text-white placeholder-neutral-600 focus:outline-none focus:ring-1 focus:ring-white focus:border-white transition-all font-mono"
+                    placeholder="HDFC_..."
                   />
                 </div>
-                <button 
-                  type="submit" 
-                  disabled={submitting || !amount || !bankAccount}
-                  className="w-full bg-blue-500 hover:bg-blue-400 text-white font-semibold py-3 px-6 rounded-xl transition-all shadow-[0_0_20px_-5px_rgba(59,130,246,0.4)] hover:shadow-[0_0_30px_-5px_rgba(59,130,246,0.6)] disabled:opacity-50 disabled:cursor-not-allowed group active:scale-95"
-                >
-                  <span className="flex items-center justify-center gap-2">
-                    {submitting ? 'Processing...' : 'Submit Payout'}
-                    {!submitting && <ArrowUpRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />}
-                  </span>
-                </button>
+                <div className="pt-2">
+                  <button 
+                    type="submit" 
+                    disabled={submitting || !amount || !bankAccount}
+                    className="w-full bg-white hover:bg-neutral-200 text-black font-medium py-2 px-4 rounded-md text-sm transition-colors disabled:opacity-50 disabled:hover:bg-white disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                  >
+                    {submitting ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : (
+                      'Send Payout'
+                    )}
+                  </button>
+                </div>
               </form>
             </div>
           </div>
           
+        </div>
+      </main>
+    </div>
+  );
+}
+
+function SelectMerchant() {
+  const navigate = useNavigate();
+  const [newCorpName, setNewCorpName] = useState('');
+  const [isCreating, setIsCreating] = useState(false);
+  const [createError, setCreateError] = useState(null);
+
+  const handleCreateMerchant = async (e) => {
+    e.preventDefault();
+    if (!newCorpName.trim()) return;
+    
+    setIsCreating(true);
+    setCreateError(null);
+    try {
+      const res = await fetch(`${API_BASE}/merchants`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ name: newCorpName.trim() })
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || 'Failed to create merchant');
+      }
+      navigate(`/${data.id}`);
+    } catch (err) {
+      setCreateError(err.message);
+    } finally {
+      setIsCreating(false);
+    }
+  };
+
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-black text-white font-sans selection:bg-neutral-800 selection:text-white">
+      <div className="w-full max-w-sm px-6">
+        <div className="text-center mb-8">
+          <h2 className="text-xl font-semibold tracking-tight text-white mb-2">
+            Select Merchant
+          </h2>
+          <p className="text-neutral-400 text-sm">
+            Enter a valid simulation UUID to view dashboard.
+          </p>
+        </div>
+
+        <div className="bg-[#0a0a0a] border border-neutral-800 rounded-xl p-4 shadow-xl mb-6">
+          <input 
+            type="text" 
+            placeholder="Merchant UUID..." 
+            className="w-full bg-black border border-neutral-800 rounded-md px-3 py-2 text-sm text-white placeholder-neutral-600 focus:outline-none focus:ring-1 focus:ring-white focus:border-white transition-all font-mono mb-3"
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') navigate(`/${e.target.value}`);
+            }}
+            autoFocus
+          />
+          <button 
+            className="w-full bg-white hover:bg-neutral-200 text-black font-medium py-2 px-4 rounded-md text-sm transition-colors"
+            onClick={(e) => {
+              const input = e.currentTarget.previousElementSibling;
+              if (input.value) navigate(`/${input.value}`);
+            }}
+          >
+            Continue &rarr;
+          </button>
+        </div>
+
+        <div className="relative">
+          <div className="absolute inset-0 flex items-center">
+            <div className="w-full border-t border-neutral-800"></div>
+          </div>
+          <div className="relative flex justify-center text-xs">
+            <span className="bg-black px-2 text-neutral-500">Or create new</span>
+          </div>
+        </div>
+
+        <div className="mt-6 bg-[#0a0a0a] border border-neutral-800 rounded-xl p-4 shadow-xl">
+          {createError && (
+             <div className="mb-3 text-xs text-red-500 bg-red-500/10 border border-red-500/20 p-2 rounded flex items-center gap-2">
+               <XCircle className="w-3 h-3" /> {createError}
+             </div>
+          )}
+          <form onSubmit={handleCreateMerchant}>
+            <input 
+              type="text" 
+              placeholder="Corp Name (e.g. Acme Corp)" 
+              value={newCorpName}
+              onChange={(e) => setNewCorpName(e.target.value)}
+              className="w-full bg-black border border-neutral-800 rounded-md px-3 py-2 text-sm text-white placeholder-neutral-600 focus:outline-none focus:ring-1 focus:ring-white focus:border-white transition-all mb-3"
+            />
+            <button 
+              type="submit"
+              disabled={isCreating || !newCorpName.trim()}
+              className="w-full bg-black border border-neutral-800 hover:bg-neutral-900 text-white font-medium py-2 px-4 rounded-md text-sm transition-colors flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {isCreating ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Create Merchant'}
+            </button>
+          </form>
+        </div>
+        
+        <div className="mt-8 text-center">
+          <p className="text-xs text-neutral-600">
+            Powered by Playto Engine
+          </p>
         </div>
       </div>
     </div>
   );
 }
 
+function App() {
+  return (
+    <Routes>
+      <Route path="/" element={<SelectMerchant />} />
+      <Route path="/:merchantId" element={<Dashboard />} />
+    </Routes>
+  );
+}
+
 export default App;
+

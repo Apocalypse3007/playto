@@ -13,9 +13,16 @@ def request_payout(merchant_id, amount_paise, bank_account_id, idempotency_key):
     """
     Core function for payout request logic.
     """
-    merchant = Merchant.objects.get(id=merchant_id)
+    # 1. Lock the merchant row so nobody else can touch their balance
+    merchant = Merchant.objects.select_for_update().get(id=merchant_id)
         
-    # 1. Create the pending payout
+    # 2. Calculate balance dynamically
+    total_db = Transaction.objects.filter(merchant=merchant).aggregate(total=Sum('amount_paise'))['total'] or 0
+    
+    if total_db < amount_paise:
+        raise InsufficientFundsError("Insufficient balance for payout")
+
+    # 3. Create the pending payout
     payout = Payout.objects.create(
         merchant=merchant,
         amount_paise=amount_paise,
@@ -24,7 +31,13 @@ def request_payout(merchant_id, amount_paise, bank_account_id, idempotency_key):
         idempotency_key_ref=idempotency_key
     )
     
-    # Do not hold funds, as this is a request for funds.
+    # 4. Hold the funds by creating a PAYOUT_HOLD transaction (negative amount)
+    Transaction.objects.create(
+        merchant=merchant,
+        amount_paise=-amount_paise,
+        txn_type=Transaction.Type.PAYOUT_HOLD,
+        payout=payout
+    )
     
     return payout
 
@@ -54,30 +67,32 @@ def transition_payout_state(payout_id, target_state):
         
     payout.state = target_state
     
-    # If failing, no refund is needed because no funds were held at request time.
+    # If failing, refund the held funds.
     if target_state == Payout.State.FAILED:
-        pass
-        
-    # If completing, credit the requester and debit the payer.
-    if target_state == Payout.State.COMPLETED:
-        # Credit the requester (the one who asked for money)
         Transaction.objects.create(
             merchant=payout.merchant,
             amount_paise=payout.amount_paise,
-            txn_type=Transaction.Type.CREDIT,
+            txn_type=Transaction.Type.PAYOUT_REFUND,
             payout=payout
         )
         
-        # Debit the payer (the person who was asked for money)
+    # If completing, the funds are already held. We don't need to do anything for the payer except maybe converting the hold to a debit.
+    # Actually, the hold is already a negative value, so the balance is correct.
+    # We might just add a DEBIT to the payer and a CREDIT to the payer to cancel the hold, but the hold already decremented the balance.
+    # Wait, the spec says "debit the payer"?
+    # Let's just leave the HOLD as the debit for the payer. It's mathematically the same.
+    # However, for the recipient (the bank account id), if it's another merchant, we should credit them.
+    if target_state == Payout.State.COMPLETED:
+        # Credit the recipient
         import uuid
         try:
             uuid_val = uuid.UUID(payout.bank_account_id)
-            payer = Merchant.objects.filter(id=uuid_val).first()
-            if payer:
+            recipient = Merchant.objects.filter(id=uuid_val).first()
+            if recipient:
                 Transaction.objects.create(
-                    merchant=payer,
-                    amount_paise=-payout.amount_paise,
-                    txn_type=Transaction.Type.DEBIT,
+                    merchant=recipient,
+                    amount_paise=payout.amount_paise,
+                    txn_type=Transaction.Type.CREDIT,
                     payout=payout
                 )
         except (ValueError, TypeError):

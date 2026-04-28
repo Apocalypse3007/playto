@@ -4,10 +4,29 @@ from django.db import transaction, IntegrityError
 from django.utils import timezone
 from datetime import timedelta
 
-from core.models import Merchant, IdempotencyKey, Payout
+from core.models import Merchant, IdempotencyKey, Payout, Transaction
 from core.services import request_payout, InsufficientFundsError
 from core.tasks import process_payout
 from .serializers import PayoutRequestSerializer, PayoutSerializer, MerchantDashboardSerializer
+
+class MerchantCreateView(views.APIView):
+    def post(self, request):
+        name = request.data.get('name')
+        if not name:
+            return Response({'error': 'Name is required'}, status=status.HTTP_400_BAD_REQUEST)
+        
+        try:
+            with transaction.atomic():
+                merchant = Merchant.objects.create(name=name)
+                # Seed with 10,000 INR
+                Transaction.objects.create(
+                    merchant=merchant,
+                    amount_paise=1000000,
+                    txn_type=Transaction.Type.CREDIT
+                )
+            return Response({'id': merchant.id, 'name': merchant.name}, status=status.HTTP_201_CREATED)
+        except Exception as e:
+            return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 class MerchantDashboardView(views.APIView):
     def get(self, request, merchant_id):
@@ -103,13 +122,20 @@ class PayoutRequestView(views.APIView):
         self._save_idempotency_state(idemp_key, merchant, resp_data, status.HTTP_201_CREATED, payout_id=payout.id)
         
         # Fire off celery task
-        process_payout.apply_async((payout.id,))
+        process_payout.apply_async((str(payout.id),))
         
         return Response(resp_data, status=status.HTTP_201_CREATED)
         
     def _save_idempotency_state(self, key, merchant, response_body, response_status, payout_id=None):
         idem_record = IdempotencyKey.objects.get(key=key, merchant=merchant)
-        idem_record.response_body = response_body
+        
+        import json
+        from django.core.serializers.json import DjangoJSONEncoder
+        
+        # Serialize and deserialize using Django's encoder to convert UUIDs and Datetimes to strings
+        safe_response_body = json.loads(json.dumps(response_body, cls=DjangoJSONEncoder))
+        
+        idem_record.response_body = safe_response_body
         idem_record.response_status = response_status
         idem_record.payout_id = payout_id
         idem_record.save()

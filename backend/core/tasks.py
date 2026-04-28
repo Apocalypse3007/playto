@@ -57,4 +57,4 @@ def retry_stuck_payouts():
             payout.retry_count += 1
             payout.save(update_fields=['retry_count'])
             # We skip 'transition_payout_state' to PROCESSING because it's already there and we don't want to reset it
-            process_payout.apply_async((payout.id,), countdown=2 ** payout.retry_count) # exp backoff
+            process_payout.apply_async((str(payout.id),), countdown=2 ** payout.retry_count) # exp backoff
