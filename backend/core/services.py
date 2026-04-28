@@ -11,19 +11,11 @@ class InvalidStateTransitionError(Exception):
 @transaction.atomic
 def request_payout(merchant_id, amount_paise, bank_account_id, idempotency_key):
     """
-    Core function for payout logic. Uses select_for_update to prevent 
-    concurrent double passing of funds.
+    Core function for payout request logic.
     """
-    # 1. Lock the merchant row so nobody else can touch their balance
-    merchant = Merchant.objects.select_for_update().get(id=merchant_id)
-    
-    # 2. Calculate balance dynamically (no Python arithmetic on old vars, pure DB aggregations)
-    total_db = Transaction.objects.filter(merchant=merchant).aggregate(total=Sum('amount_paise'))['total'] or 0
-    
-    if total_db < amount_paise:
-        raise InsufficientFundsError("Insufficient balance for payout")
+    merchant = Merchant.objects.get(id=merchant_id)
         
-    # 3. Create the pending payout
+    # 1. Create the pending payout
     payout = Payout.objects.create(
         merchant=merchant,
         amount_paise=amount_paise,
@@ -32,13 +24,7 @@ def request_payout(merchant_id, amount_paise, bank_account_id, idempotency_key):
         idempotency_key_ref=idempotency_key
     )
     
-    # 4. Hold the funds in the ledger (negative amount)
-    Transaction.objects.create(
-        merchant=merchant,
-        amount_paise=-amount_paise,
-        txn_type=Transaction.Type.PAYOUT_HOLD,
-        payout=payout
-    )
+    # Do not hold funds, as this is a request for funds.
     
     return payout
 
@@ -68,27 +54,30 @@ def transition_payout_state(payout_id, target_state):
         
     payout.state = target_state
     
-    # If failing, atomic refund must occur.
+    # If failing, no refund is needed because no funds were held at request time.
     if target_state == Payout.State.FAILED:
-        # Payout was held as a negative amount. We refund it (positive amount of the same magnitude).
+        pass
+        
+    # If completing, credit the requester and debit the payer.
+    if target_state == Payout.State.COMPLETED:
+        # Credit the requester (the one who asked for money)
         Transaction.objects.create(
             merchant=payout.merchant,
-            amount_paise=payout.amount_paise, 
-            txn_type=Transaction.Type.PAYOUT_REFUND,
+            amount_paise=payout.amount_paise,
+            txn_type=Transaction.Type.CREDIT,
             payout=payout
         )
         
-    # If completing and the bank_account_id is another merchant's UUID, settle it there.
-    if target_state == Payout.State.COMPLETED:
+        # Debit the payer (the person who was asked for money)
         import uuid
         try:
             uuid_val = uuid.UUID(payout.bank_account_id)
-            recipient = Merchant.objects.filter(id=uuid_val).first()
-            if recipient:
+            payer = Merchant.objects.filter(id=uuid_val).first()
+            if payer:
                 Transaction.objects.create(
-                    merchant=recipient,
-                    amount_paise=payout.amount_paise,
-                    txn_type=Transaction.Type.CREDIT,
+                    merchant=payer,
+                    amount_paise=-payout.amount_paise,
+                    txn_type=Transaction.Type.DEBIT,
                     payout=payout
                 )
         except (ValueError, TypeError):

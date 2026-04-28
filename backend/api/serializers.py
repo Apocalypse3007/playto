@@ -4,7 +4,7 @@ from core.models import Merchant, Payout, Transaction
 class PayoutSerializer(serializers.ModelSerializer):
     class Meta:
         model = Payout
-        fields = ['id', 'amount_paise', 'bank_account_id', 'state', 'created_at', 'updated_at']
+        fields = ['id', 'amount_paise', 'bank_account_id', 'state', 'created_at', 'updated_at', 'merchant']
 
 class PayoutRequestSerializer(serializers.Serializer):
     amount_paise = serializers.IntegerField(min_value=1)
@@ -28,12 +28,9 @@ class MerchantDashboardSerializer(serializers.ModelSerializer):
         return obj.balance_paise
 
     def get_held_balance(self, obj):
-        # We can compute held balance by looking at pending/processing payouts
-        total_held = Payout.objects.filter(
-            merchant=obj, 
-            state__in=[Payout.State.PENDING, Payout.State.PROCESSING]
-        ).aggregate(total=serializers.models.Sum('amount_paise'))['total'] or 0
-        return total_held
+        # With the new 'Invoice'/'Payment Request' semantics, requesting a payout
+        # does not hold funds.
+        return 0
 
     def get_recent_transactions(self, obj):
         txns = Transaction.objects.filter(merchant=obj).order_by('-created_at')[:10]

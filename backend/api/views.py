@@ -19,7 +19,10 @@ class MerchantDashboardView(views.APIView):
         serializer = MerchantDashboardSerializer(merchant)
         
         # Also include payout history
-        payouts = Payout.objects.filter(merchant=merchant).order_by('-created_at')[:20]
+        from django.db.models import Q
+        payouts = Payout.objects.filter(
+            Q(merchant=merchant) | Q(bank_account_id=str(merchant.id))
+        ).order_by('-created_at')[:20]
         payouts_data = PayoutSerializer(payouts, many=True).data
         
         data = serializer.data

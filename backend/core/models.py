@@ -17,6 +17,7 @@ class Merchant(models.Model):
 class Transaction(models.Model):
     class Type(models.TextChoices):
         CREDIT = 'CREDIT', 'Credit'
+        DEBIT = 'DEBIT', 'Debit'
         PAYOUT_HOLD = 'PAYOUT_HOLD', 'Payout Hold'
         PAYOUT_REFUND = 'PAYOUT_REFUND', 'Payout Refund'
 

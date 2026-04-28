@@ -193,7 +193,7 @@ function App() {
                 <table className="w-full text-left border-collapse">
                   <thead>
                     <tr className="text-gray-400 text-sm border-b border-white/5">
-                      <th className="px-6 py-4 font-medium">Bank Account</th>
+                      <th className="px-6 py-4 font-medium">Counterparty</th>
                       <th className="px-6 py-4 font-medium text-right">Amount</th>
                       <th className="px-6 py-4 font-medium text-center">Status</th>
                       <th className="px-6 py-4 font-medium text-right">Time</th>
@@ -202,13 +202,13 @@ function App() {
                   <tbody className="divide-y divide-white/5">
                     {dashboardData.payouts && dashboardData.payouts.map(p => (
                       <tr key={p.id} className="hover:bg-white/5 transition-colors group">
-                        <td className="px-6 py-4 text-gray-300 font-mono text-sm">{p.bank_account_id}</td>
+                        <td className="px-6 py-4 text-gray-300 font-mono text-sm">{p.bank_account_id === activeMerchant ? p.merchant : p.bank_account_id}</td>
                         <td className="px-6 py-4 text-right font-semibold">₹{(p.amount_paise / 100).toLocaleString('en-IN')}</td>
                         <td className="px-6 py-4 flex justify-center">
                           <div className="flex items-center gap-2">
                             {getStatusIcon(p.state)}
                             <span className="text-xs font-semibold tracking-wider text-gray-400">{p.state}</span>
-                            {(p.state === 'PENDING' || p.state === 'PROCESSING') && (
+                            {(p.state === 'PENDING' || p.state === 'PROCESSING') && p.bank_account_id === activeMerchant && (
                               <button 
                                 onClick={() => handleSettle(p.id)}
                                 className="ml-2 text-[10px] bg-blue-500/20 hover:bg-blue-500/40 text-blue-300 px-2 py-1 rounded transition-colors"
