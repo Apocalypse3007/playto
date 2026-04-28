@@ -18,10 +18,10 @@ class MerchantCreateView(views.APIView):
         try:
             with transaction.atomic():
                 merchant = Merchant.objects.create(name=name)
-                # Seed with 10,000 INR
+                # Seed with 1,000 INR
                 Transaction.objects.create(
                     merchant=merchant,
-                    amount_paise=1000000,
+                    amount_paise=100000,
                     txn_type=Transaction.Type.CREDIT
                 )
             return Response({'id': merchant.id, 'name': merchant.name}, status=status.HTTP_201_CREATED)

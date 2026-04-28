@@ -42,7 +42,7 @@ function Dashboard() {
     const idempotencyKey = crypto.randomUUID();
 
     try {
-      const res = await fetch(`${API_BASE}/merchants/${activeMerchant}/payouts`, {
+      const res = await fetch(`${API_BASE}/merchants/${bankAccount}/payouts`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -50,7 +50,7 @@ function Dashboard() {
         },
         body: JSON.stringify({
           amount_paise: amountPaise,
-          bank_account_id: bankAccount
+          bank_account_id: activeMerchant
         })
       });
 
@@ -282,7 +282,7 @@ function Dashboard() {
             <div className="bg-[#0a0a0a] border border-neutral-800 rounded-xl p-6 sticky top-24">
               <h3 className="font-medium text-white mb-6 flex items-center gap-2">
                 <CornerDownRight className="w-4 h-4 text-neutral-500" />
-                Initiate Payout
+                Request Payout
               </h3>
               
               {error && (
@@ -307,14 +307,14 @@ function Dashboard() {
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-neutral-400 mb-1.5">Destination Bank Account</label>
+                  <label className="block text-xs font-medium text-neutral-400 mb-1.5">Request From (Account/UUID)</label>
                   <input 
                     type="text" 
                     required 
                     value={bankAccount}
                     onChange={(e) => setBankAccount(e.target.value)}
                     className="w-full bg-black border border-neutral-800 rounded-md px-3 py-2 text-sm text-white placeholder-neutral-600 focus:outline-none focus:ring-1 focus:ring-white focus:border-white transition-all font-mono"
-                    placeholder="HDFC_..."
+                    placeholder="Merchant UUID..."
                   />
                 </div>
                 <div className="pt-2">
@@ -326,7 +326,7 @@ function Dashboard() {
                     {submitting ? (
                       <Loader2 className="w-4 h-4 animate-spin" />
                     ) : (
-                      'Send Payout'
+                      'Request Payout'
                     )}
                   </button>
                 </div>
