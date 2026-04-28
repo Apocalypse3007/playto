@@ -28,13 +28,14 @@ class MerchantDashboardSerializer(serializers.ModelSerializer):
         return obj.balance_paise
 
     def get_held_balance(self, obj):
-        # Calculate held balance by summing PAYOUT_HOLD transactions.
+        # Calculate held balance by summing PAYOUT_HOLD transactions for active payouts.
         from django.db.models import Sum
-        from core.models import Transaction
+        from core.models import Transaction, Payout
         
         held = Transaction.objects.filter(
             merchant=obj, 
-            txn_type=Transaction.Type.PAYOUT_HOLD
+            txn_type=Transaction.Type.PAYOUT_HOLD,
+            payout__state__in=[Payout.State.PENDING, Payout.State.PROCESSING]
         ).aggregate(total=Sum('amount_paise'))['total'] or 0
         return held
 

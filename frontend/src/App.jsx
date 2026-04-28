@@ -38,7 +38,7 @@ function Dashboard() {
     setError(null);
     setSubmitting(true);
     
-    const amountPaise = parseFloat(amount) * 100;
+    const amountPaise = parseInt(amount, 10) * 100;
     const idempotencyKey = crypto.randomUUID();
 
     try {
@@ -193,7 +193,7 @@ function Dashboard() {
                 <table className="w-full text-sm text-left">
                   <thead className="text-xs text-neutral-400 bg-[#0a0a0a] border-b border-neutral-800">
                     <tr>
-                      <th className="px-6 py-3 font-medium">Destination</th>
+                      <th className="px-6 py-3 font-medium">Counterparty</th>
                       <th className="px-6 py-3 font-medium text-right">Amount</th>
                       <th className="px-6 py-3 font-medium">Status</th>
                       <th className="px-6 py-3 font-medium text-right">Created</th>
@@ -211,12 +211,20 @@ function Dashboard() {
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className="flex items-center gap-3">
                             {getStatusBadge(p.state)}
-                            {(p.state === 'PENDING' || p.state === 'PROCESSING') && p.bank_account_id === activeMerchant && (
+                            {p.state === 'PENDING' && p.merchant === activeMerchant && (
                               <button 
                                 onClick={() => handleSettle(p.id)}
                                 className="opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1 text-[10px] bg-neutral-800 hover:bg-neutral-700 text-white px-2 py-1 rounded"
                               >
                                 Settle <ArrowRight className="w-3 h-3" />
+                              </button>
+                            )}
+                            {p.state === 'PROCESSING' && p.bank_account_id === activeMerchant && (
+                              <button 
+                                onClick={() => handleSettle(p.id)}
+                                className="opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1 text-[10px] bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-500 px-2 py-1 rounded border border-emerald-500/20"
+                              >
+                                Clear Due <Check className="w-3 h-3" />
                               </button>
                             )}
                           </div>
@@ -299,7 +307,7 @@ function Dashboard() {
                     type="number" 
                     required 
                     min="1"
-                    step="0.01"
+                    step="1"
                     value={amount}
                     onChange={(e) => setAmount(e.target.value)}
                     className="w-full bg-black border border-neutral-800 rounded-md px-3 py-2 text-sm text-white placeholder-neutral-600 focus:outline-none focus:ring-1 focus:ring-white focus:border-white transition-all"

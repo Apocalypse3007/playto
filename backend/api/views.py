@@ -121,8 +121,8 @@ class PayoutRequestView(views.APIView):
         # Save idempotency state
         self._save_idempotency_state(idemp_key, merchant, resp_data, status.HTTP_201_CREATED, payout_id=payout.id)
         
-        # Fire off celery task
-        process_payout.apply_async((str(payout.id),))
+        # Manual settlement flow replaces the celery task
+        # process_payout.apply_async((str(payout.id),))
         
         return Response(resp_data, status=status.HTTP_201_CREATED)
         
@@ -150,7 +150,6 @@ class SettlePayoutView(views.APIView):
         from core.services import transition_payout_state
         if payout.state == Payout.State.PENDING:
             transition_payout_state(payout.id, Payout.State.PROCESSING)
-            transition_payout_state(payout.id, Payout.State.COMPLETED)
         elif payout.state == Payout.State.PROCESSING:
             transition_payout_state(payout.id, Payout.State.COMPLETED)
             
